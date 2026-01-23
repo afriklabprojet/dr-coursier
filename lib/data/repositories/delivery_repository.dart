@@ -1,0 +1,173 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/constants/api_constants.dart';
+import '../../core/network/api_client.dart';
+import '../models/courier_profile.dart';
+import '../models/delivery.dart';
+import '../models/chat_message.dart';
+
+final deliveryRepositoryProvider = Provider<DeliveryRepository>((ref) {
+  return DeliveryRepository(ref.read(dioProvider));
+});
+
+class DeliveryRepository {
+  final Dio _dio;
+
+  DeliveryRepository(this._dio);
+
+  Future<List<Delivery>> getDeliveries({String status = 'pending'}) async {
+    try {
+      final response = await _dio.get(
+        ApiConstants.deliveries,
+        queryParameters: {'status': status},
+      );
+
+      final data = response.data['data'] as List;
+      return data.map((e) => Delivery.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch deliveries: $e');
+    }
+  }
+
+  Future<void> acceptDelivery(int id) async {
+    try {
+      await _dio.post(ApiConstants.acceptDelivery(id));
+    } catch (e) {
+      throw Exception('Failed to accept delivery: $e');
+    }
+  }
+
+  Future<void> pickupDelivery(int id) async {
+    try {
+      await _dio.post(ApiConstants.pickupDelivery(id));
+    } catch (e) {
+      throw Exception('Failed to pickup delivery: $e');
+    }
+  }
+
+  Future<void> completeDelivery(int id, String code) async {
+    try {
+      await _dio.post(
+        ApiConstants.completeDelivery(id),
+        data: {'confirmation_code': code},
+      );
+    } catch (e) {
+      throw Exception('Failed to complete delivery: $e');
+    }
+  }
+
+  Future<bool> toggleAvailability() async {
+    try {
+      final response = await _dio.post(ApiConstants.availability);
+      return response.data['data']['status'] == 'available';
+    } catch (e) {
+      throw Exception('Failed to toggle availability: $e');
+    }
+  }
+
+  Future<void> updateLocation(double latitude, double longitude) async {
+    try {
+      await _dio.post(
+        ApiConstants.location,
+        data: {'latitude': latitude, 'longitude': longitude},
+      );
+    } catch (e) {
+      throw Exception('Failed to update location: $e');
+    }
+  }
+
+  Future<CourierProfile> getProfile() async {
+    try {
+      final response = await _dio.get(ApiConstants.profile);
+      return CourierProfile.fromJson(response.data['data']);
+    } catch (e) {
+      throw Exception('Failed to fetch profile: $e');
+    }
+  }
+
+  Future<List<ChatMessage>> getMessages(int orderId, String target) async {
+    try {
+      final response = await _dio.get(
+        ApiConstants.messages(orderId),
+        queryParameters: {'is_courier': 1, 'target': target},
+      );
+      final data = response.data['data'] as List;
+      return data.map((e) => ChatMessage.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch messages: $e');
+    }
+  }
+
+  Future<ChatMessage> sendMessage(int orderId, String content, String target) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.messages(orderId),
+        data: {
+          'content': content, 
+          'target': target
+        },
+      );
+      return ChatMessage.fromJson(response.data['data']);
+    } catch (e) {
+      throw Exception('Failed to send message: $e');
+    }
+  }
+
+  /// Accepter plusieurs livraisons en batch (max 5)
+  Future<Map<String, dynamic>> batchAcceptDeliveries(List<int> deliveryIds) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.batchAcceptDeliveries,
+        data: {'delivery_ids': deliveryIds},
+      );
+      return response.data['data'];
+    } catch (e) {
+      if (e is DioException) {
+        throw Exception(e.response?.data['message'] ?? 'Erreur lors de l\'acceptation');
+      }
+      throw Exception('Failed to batch accept deliveries: $e');
+    }
+  }
+
+  /// Récupérer l'itinéraire optimisé pour les livraisons actives
+  Future<Map<String, dynamic>> getOptimizedRoute() async {
+    try {
+      final response = await _dio.get(ApiConstants.deliveriesRoute);
+      return response.data['data'];
+    } catch (e) {
+      throw Exception('Failed to get optimized route: $e');
+    }
+  }
+
+  /// Noter un client après une livraison
+  Future<void> rateCustomer({
+    required int deliveryId,
+    required int rating,
+    String? comment,
+    List<String>? tags,
+  }) async {
+    try {
+      await _dio.post(
+        '/courier/deliveries/$deliveryId/rate-customer',
+        data: {
+          'rating': rating,
+          if (comment != null && comment.isNotEmpty) 'comment': comment,
+          if (tags != null && tags.isNotEmpty) 'tags': tags,
+        },
+      );
+    } catch (e) {
+      if (e is DioException) {
+        throw Exception(e.response?.data['message'] ?? 'Erreur lors de la notation');
+      }
+      throw Exception('Failed to rate customer: $e');
+    }
+  }
+
+  Future<void> rejectDelivery(int id) async {
+    try {
+      await _dio.post('/courier/deliveries/$id/reject');
+    } catch (e) {
+      throw Exception('Failed to reject delivery: $e');
+    }
+  }
+}

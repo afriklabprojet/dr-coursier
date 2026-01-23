@@ -1,0 +1,17 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "echo",
+			"type": "shell",
+			"command": "echo \"Courier App Restored\"",
+			"group": "echo"
+		},
+		{
+			"label": "echo",
+			"type": "shell",
+			"command": "echo \"Confirmation Code Logic Implemented\"",
+			"group": "echo"
+		}
+	]
+}

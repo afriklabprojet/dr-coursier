@@ -1,0 +1,808 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../providers/profile_provider.dart';
+import '../../data/models/user.dart';
+import '../../data/models/wallet_data.dart';
+import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/delivery_repository.dart';
+import '../../data/repositories/wallet_repository.dart';
+import 'login_screen.dart';
+import 'deliveries_screen.dart';
+import 'settings_screen.dart';
+import 'statistics_screen.dart';
+
+// --- Providers ---
+
+// Provider pour les données réelles du wallet (statistiques)
+final profileWalletProvider = FutureProvider.autoDispose<WalletData?>((ref) async {
+  try {
+    final repo = ref.read(walletRepositoryProvider);
+    return await repo.getWalletData();
+  } catch (e) {
+    return null;
+  }
+});
+
+class ProfileScreen extends ConsumerWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userAsync = ref.watch(profileProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD), // Fond gris très clair premium
+      body: userAsync.when(
+        data: (user) => _ProfileView(user: user),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text('Erreur de chargement: $err', textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              FilledButton.tonal(
+                onPressed: () => ref.refresh(profileProvider),
+                child: const Text('Réessayer'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileView extends ConsumerWidget {
+  final User user;
+
+  const _ProfileView({required this.user});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          _HeaderSection(user: user),
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionTitle(title: 'Aperçu'),
+                const SizedBox(height: 16),
+                _StatsGrid(user: user),
+                const SizedBox(height: 32),
+                _SectionTitle(title: 'Personnel & Véhicule'),
+                const SizedBox(height: 16),
+                _InfoSection(user: user),
+                const SizedBox(height: 32),
+                _SectionTitle(title: 'Hebdomadaire'),
+                const SizedBox(height: 16),
+                _PerformanceCard(),
+                const SizedBox(height: 32),
+                _SectionTitle(title: 'Préférences'),
+                const SizedBox(height: 16),
+                _ActionsSection(),
+                const SizedBox(height: 40),
+                _LogoutButton(),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- 1. Header Premium ---
+
+class _HeaderSection extends ConsumerStatefulWidget {
+  final User user;
+
+  const _HeaderSection({required this.user});
+
+  @override
+  ConsumerState<_HeaderSection> createState() => _HeaderSectionState();
+}
+
+class _HeaderSectionState extends ConsumerState<_HeaderSection> {
+  late bool isOnline;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    isOnline = widget.user.courier?.status == 'available';
+  }
+
+  @override
+  void didUpdateWidget(_HeaderSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.courier?.status != widget.user.courier?.status) {
+      isOnline = widget.user.courier?.status == 'available';
+    }
+  }
+
+  Future<void> _toggleAvailability() async {
+    setState(() => isLoading = true);
+    try {
+      final newStatus = await ref.read(deliveryRepositoryProvider).toggleAvailability();
+      setState(() {
+        isOnline = newStatus;
+      });
+      // Optional: Refresh global profile to keep sync
+      // ref.invalidate(profileProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final courierInfo = widget.user.courier;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade900, Colors.blue.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Avatar & Info
+              Row(
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircleAvatar(
+                          radius: 36,
+                          backgroundColor: Colors.white,
+                          backgroundImage: widget.user.avatar != null 
+                              ? NetworkImage(widget.user.avatar!) 
+                              : null,
+                          child: widget.user.avatar == null
+                              ? Text(
+                                  widget.user.name.substring(0, 1).toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade900,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                      // Status Dot Pulse
+                      Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: isOnline ? Colors.greenAccent : Colors.grey,
+                          border: Border.all(color: Colors.white, width: 2),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            if (isOnline)
+                              BoxShadow(
+                                color: Colors.greenAccent.withValues(alpha: 0.6),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.user.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          (courierInfo?.vehicleType ?? 'Transporteur').toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Status Switch
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: IconButton(
+                  icon: isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Icon(
+                        isOnline ? Icons.power_settings_new : Icons.pause_circle_outline,
+                        color: isOnline ? Colors.greenAccent : Colors.white54,
+                      ),
+                  onPressed: isLoading ? null : _toggleAvailability,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- 2. Stats Dashboard (Grid 2x2) ---
+
+class _StatsGrid extends ConsumerWidget {
+  final User user;
+
+  const _StatsGrid({required this.user});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final walletAsync = ref.watch(profileWalletProvider);
+    final courier = user.courier;
+
+    // Récupérer les vraies stats du wallet ou valeurs par défaut
+    final walletData = walletAsync.whenOrNull(data: (data) => data);
+    final deliveriesCount = walletData?.deliveriesCount ?? courier?.completedDeliveries ?? 0;
+    final totalCommissions = walletData?.totalCommissions ?? 0;
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: 1.5,
+      children: [
+        _StatCard(
+          icon: Icons.local_shipping_outlined,
+          value: '$deliveriesCount',
+          label: 'Total Livré',
+          color: Colors.blue.shade700,
+          bgColor: Colors.blue.shade50,
+        ),
+        _StatCard(
+          icon: Icons.star_outline_rounded,
+          value: '${courier?.rating ?? 5.0}',
+          label: 'Note Moyenne',
+          color: Colors.orange.shade700,
+          bgColor: Colors.orange.shade50,
+        ),
+        _StatCard(
+          icon: Icons.account_balance_wallet_outlined,
+          value: '${NumberFormat("#,##0", "fr_FR").format(walletData?.balance ?? 0)}',
+          label: 'Solde (FCFA)',
+          color: Colors.green.shade700,
+          bgColor: Colors.green.shade50,
+        ),
+        _StatCard(
+          icon: Icons.trending_down,
+          value: '${NumberFormat("#,##0", "fr_FR").format(totalCommissions)}',
+          label: 'Commissions',
+          color: Colors.purple.shade700,
+          bgColor: Colors.purple.shade50,
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+  final Color bgColor;
+
+  const _StatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+    required this.bgColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: bgColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- 3. Informations Section ---
+
+class _InfoSection extends StatelessWidget {
+  final User user;
+
+  const _InfoSection({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _InfoTile(
+            icon: Icons.email_outlined,
+            title: 'Email',
+            value: user.email,
+            isFirst: true,
+          ),
+          _Separator(),
+          _InfoTile(
+            icon: Icons.phone_android_outlined,
+            title: 'Téléphone',
+            value: user.phone ?? 'Non renseigné',
+            action: Icon(Icons.edit, size: 16, color: Colors.grey.shade400),
+          ),
+          _Separator(),
+          _InfoTile(
+            icon: Icons.directions_bike_outlined,
+            title: 'Véhicule',
+            value: '${user.courier?.vehicleType ?? "Inconnu"} (${user.courier?.vehicleNumber ?? "---"})',
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final Widget? action;
+  final bool isFirst;
+  final bool isLast;
+
+  const _InfoTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.action,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {},
+      borderRadius: BorderRadius.vertical(
+        top: isFirst ? const Radius.circular(20) : Radius.zero,
+        bottom: isLast ? const Radius.circular(20) : Radius.zero,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.blue.shade800, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (action != null) action!,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- 4. Performance Card ---
+
+class _PerformanceCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final walletAsync = ref.watch(profileWalletProvider);
+    final walletData = walletAsync.whenOrNull(data: (data) => data);
+    
+    // Données réelles du wallet
+    final totalEarnings = walletData?.totalEarnings ?? 0;
+    final deliveriesCount = walletData?.deliveriesCount ?? 0;
+    final totalTopups = walletData?.totalTopups ?? 0;
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C3E50), // Dark elegant background
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           Row(
+             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+             children: [
+               const Text(
+                 'Gains de Livraison',
+                 style: TextStyle(color: Colors.white70, fontSize: 14),
+               ),
+               if (deliveriesCount > 0)
+                 Container(
+                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                   decoration: BoxDecoration(
+                     color: Colors.white.withValues(alpha: 0.1),
+                     borderRadius: BorderRadius.circular(8),
+                   ),
+                   child: Row(
+                     mainAxisSize: MainAxisSize.min,
+                     children: [
+                       const Icon(Icons.local_shipping, color: Colors.greenAccent, size: 14),
+                       const SizedBox(width: 4),
+                       Text('$deliveriesCount', style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
+                     ],
+                   ),
+                 )
+             ],
+           ),
+           const SizedBox(height: 8),
+           Text(
+             '${NumberFormat("#,##0", "fr_FR").format(totalEarnings)} FCFA',
+             style: const TextStyle(
+               color: Colors.white,
+               fontSize: 32,
+               fontWeight: FontWeight.bold,
+             ),
+           ),
+           const SizedBox(height: 24),
+           Row(
+             children: [
+               _PerformanceMetrics(label: 'Livraisons', value: '$deliveriesCount'),
+               _VerticalDivider(),
+               _PerformanceMetrics(label: 'Rechargé', value: '${NumberFormat.compact(locale: 'fr').format(totalTopups)}'),
+               _VerticalDivider(),
+               _PerformanceMetrics(label: 'Solde', value: '${NumberFormat.compact(locale: 'fr').format(walletData?.balance ?? 0)}'),
+             ],
+           )
+        ],
+      ),
+    );
+  }
+}
+
+class _PerformanceMetrics extends StatelessWidget {
+  final String label;
+  final String value;
+  
+  const _PerformanceMetrics({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+         children: [
+           Text(
+             value,
+             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+           ),
+           const SizedBox(height: 4),
+           Text(
+             label,
+             style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+           ),
+         ],
+      ),
+    );
+  }
+}
+
+class _VerticalDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 30,
+      width: 1,
+      color: Colors.white.withValues(alpha: 0.1), 
+    );
+  }
+}
+
+// --- 5. Quick Actions ---
+
+class _ActionsSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        _ActionButton(
+          icon: Icons.bar_chart_rounded, 
+          label: 'Statistiques',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+            );
+          },
+        ),
+        _ActionButton(
+          icon: Icons.history, 
+          label: 'Historique',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DeliveriesScreen()),
+            );
+          },
+        ),
+        _ActionButton(
+          icon: Icons.settings_outlined, 
+          label: 'Paramètres',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+          },
+        ),
+        _ActionButton(
+          icon: Icons.help_outline, 
+          label: 'Aide & Support',
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Bientôt disponible")),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon, 
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      avatar: Icon(icon, size: 18, color: Colors.blue.shade800),
+      label: Text(label),
+      backgroundColor: Colors.white,
+      side: BorderSide(color: Colors.grey.shade200),
+      labelStyle: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onPressed: onTap,
+    );
+  }
+}
+
+// --- Components ---
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+    );
+  }
+}
+
+class _Separator extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Divider(height: 1, thickness: 1, color: Colors.grey.shade100, indent: 60);
+  }
+}
+
+class _LogoutButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: () {
+            _confirmLogout(context, ref);
+        },
+        icon: Icon(Icons.logout, color: Colors.red.shade400, size: 20),
+        label: Text(
+          'Se déconnecter de l\'application',
+          style: TextStyle(color: Colors.red.shade400, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context, WidgetRef ref) {
+    // Capturer le Navigator du contexte parent AVANT d'ouvrir le dialog
+    final navigator = Navigator.of(context);
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Déconnexion'),
+        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade50,
+              elevation: 0,
+            ),
+            onPressed: () async {
+              // Fermer le dialog d'abord
+              Navigator.pop(dialogContext);
+              
+              // Effectuer la déconnexion
+              await ref.read(authRepositoryProvider).logout();
+              
+              // Utiliser le navigator capturé pour rediriger vers LoginScreen
+              navigator.pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+            child: Text('Déconnecter', style: TextStyle(color: Colors.red.shade700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
