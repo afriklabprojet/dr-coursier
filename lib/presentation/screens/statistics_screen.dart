@@ -128,7 +128,53 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen>
       },
       error: (e, s) {
         debugPrint('Stats State: ERROR - $e');
-        return Center(child: Text('Erreur: $e'));
+        final errorMessage = e.toString();
+        final isProfileError = errorMessage.contains('coursier') || 
+                               errorMessage.contains('403') ||
+                               errorMessage.contains('non trouvé');
+        
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isProfileError ? Icons.person_off : Icons.error_outline,
+                  size: 64,
+                  color: isProfileError ? Colors.orange : Colors.red,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isProfileError 
+                    ? 'Profil coursier non configuré'
+                    : 'Erreur de chargement',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  errorMessage,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                if (!isProfileError)
+                  ElevatedButton.icon(
+                    onPressed: () => ref.invalidate(statisticsProvider(_selectedPeriod)),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer'),
+                  ),
+              ],
+            ),
+          ),
+        );
       },
       data: (stats) {
         debugPrint('Stats State: DATA RECEIVED');

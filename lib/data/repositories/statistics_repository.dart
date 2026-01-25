@@ -22,7 +22,21 @@ class StatisticsRepository {
 
       return Statistics.fromJson(response.data['data']);
     } catch (e) {
-      throw Exception('Failed to fetch statistics: $e');
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final message = e.response?.data?['message'];
+        final errorCode = e.response?.data?['error_code'];
+        
+        if (statusCode == 403) {
+          if (errorCode == 'COURIER_PROFILE_NOT_FOUND') {
+            throw Exception('Profil coursier non trouvé. Ce compte n\'est pas un compte livreur.');
+          }
+          throw Exception(message ?? 'Accès refusé.');
+        } else if (statusCode == 401) {
+          throw Exception('Session expirée. Veuillez vous reconnecter.');
+        }
+      }
+      throw Exception('Impossible de charger les statistiques.');
     }
   }
 }
