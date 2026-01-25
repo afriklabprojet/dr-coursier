@@ -5,6 +5,7 @@ import '../../data/repositories/auth_repository.dart';
 import 'login_screen.dart';
 import 'dashboard_screen.dart';
 import 'pending_approval_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -43,8 +44,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     // Artificial delay for splash effect
     await Future.delayed(const Duration(milliseconds: 2500));
     
-    // Check if token exists
+    // Check if onboarding is completed
     final prefs = await SharedPreferences.getInstance();
+    final onboardingCompleted = prefs.getBool('courier_onboarding_completed') ?? false;
+    
+    if (mounted && !onboardingCompleted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+      return;
+    }
+    
+    // Check if token exists
     final token = prefs.getString('auth_token');
     
     if (mounted) {

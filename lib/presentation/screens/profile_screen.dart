@@ -133,12 +133,14 @@ class _HeaderSectionState extends ConsumerState<_HeaderSection> {
   Future<void> _toggleAvailability() async {
     setState(() => isLoading = true);
     try {
-      final newStatus = await ref.read(deliveryRepositoryProvider).toggleAvailability();
+      // Envoie le statut souhaité explicitement (inverse de l'état actuel)
+      final desiredStatus = isOnline ? 'offline' : 'available';
+      final actualStatus = await ref.read(deliveryRepositoryProvider).toggleAvailability(desiredStatus: desiredStatus);
       setState(() {
-        isOnline = newStatus;
+        isOnline = actualStatus;
       });
-      // Optional: Refresh global profile to keep sync
-      // ref.invalidate(profileProvider);
+      // Refresh global profile to keep sync
+      ref.invalidate(profileProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

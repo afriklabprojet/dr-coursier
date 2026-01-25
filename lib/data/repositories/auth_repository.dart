@@ -28,7 +28,12 @@ class AuthRepository {
       
       final response = await _dio.post(
         ApiConstants.login,
-        data: {'email': normalizedEmail, 'password': password},
+        data: {
+          'email': normalizedEmail,
+          'password': password,
+          'role': 'courier', // Indiquer que c'est l'app coursier
+          'device_name': 'courier-app',
+        },
       );
 
       // Handle wrapped response structure: { success: true, data: { token: ..., user: ... } }

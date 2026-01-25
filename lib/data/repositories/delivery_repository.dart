@@ -56,9 +56,15 @@ class DeliveryRepository {
     }
   }
 
-  Future<bool> toggleAvailability() async {
+  /// Toggle ou définit la disponibilité du coursier
+  /// [desiredStatus] : 'available' pour en ligne, 'offline' pour hors ligne
+  /// Si null, fait un toggle basé sur l'état actuel du serveur
+  Future<bool> toggleAvailability({String? desiredStatus}) async {
     try {
-      final response = await _dio.post(ApiConstants.availability);
+      final response = await _dio.post(
+        ApiConstants.availability,
+        data: desiredStatus != null ? {'status': desiredStatus} : null,
+      );
       return response.data['data']['status'] == 'available';
     } catch (e) {
       throw Exception('Failed to toggle availability: $e');

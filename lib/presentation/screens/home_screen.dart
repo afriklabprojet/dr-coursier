@@ -35,6 +35,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   );
 
   bool _isOnline = false;
+  bool _isTogglingStatus = false; // Indicateur de chargement pour le changement de statut
 
   @override
   void initState() {
@@ -44,15 +45,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _toggleAvailability(bool value) async {
+    // Empêcher les clics multiples pendant le chargement
+    if (_isTogglingStatus) return;
+    
+    setState(() => _isTogglingStatus = true);
+    
     try {
       // Optimistic update
       setState(() => _isOnline = value);
       
-      await ref.read(deliveryRepositoryProvider).toggleAvailability();
+      // Envoie le statut souhaité explicitement pour éviter les désynchronisations
+      final desiredStatus = value ? 'available' : 'offline';
+      final actualStatus = await ref.read(deliveryRepositoryProvider).toggleAvailability(desiredStatus: desiredStatus);
+      
+      // Synchroniser avec le statut réel retourné par le serveur
+      setState(() => _isOnline = actualStatus);
       ref.invalidate(profileProvider);
 
       final locationService = ref.read(locationServiceProvider);
-      if (value) {
+      if (actualStatus) {
         locationService.startTracking();
       } else {
         locationService.stopTracking();
@@ -64,6 +75,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: $e')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isTogglingStatus = false);
       }
     }
   }
@@ -338,41 +353,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 left: 40,
                 right: 40,
                 child: GestureDetector(
-                  onTap: () => _toggleAvailability(!_isOnline),
+                  onTap: _isTogglingStatus ? null : () => _toggleAvailability(!_isOnline),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     height: 60,
                     decoration: BoxDecoration(
-                      color: _isOnline ? Colors.red.shade400 : Colors.green.shade600,
+                      color: _isTogglingStatus 
+                          ? Colors.grey.shade400
+                          : (_isOnline ? Colors.red.shade400 : Colors.green.shade600),
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: (_isOnline ? Colors.red : Colors.green).withValues(alpha: 0.4),
+                          color: _isTogglingStatus 
+                              ? Colors.grey.withValues(alpha: 0.3)
+                              : ((_isOnline ? Colors.red : Colors.green).withValues(alpha: 0.4)),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         )
                       ],
                     ),
                     child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _isOnline ? Icons.power_settings_new : Icons.play_arrow,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _isOnline ? 'PASSER HORS LIGNE' : 'PASSER EN LIGNE',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              letterSpacing: 1.0,
+                      child: _isTogglingStatus
+                          ? const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'CHANGEMENT EN COURS...',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _isOnline ? Icons.power_settings_new : Icons.play_arrow,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _isOnline ? 'PASSER HORS LIGNE' : 'PASSER EN LIGNE',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ),

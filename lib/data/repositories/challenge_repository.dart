@@ -18,7 +18,19 @@ class ChallengeRepository {
       final response = await _dio.get(ApiConstants.challenges);
       return response.data['data'];
     } catch (e) {
-      throw Exception('Failed to fetch challenges: $e');
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final message = e.response?.data['message'];
+        
+        if (statusCode == 403 || statusCode == 404) {
+          throw Exception(message ?? 'Profil coursier non trouvé. Veuillez vous connecter avec un compte livreur.');
+        } else if (statusCode == 401) {
+          throw Exception('Session expirée. Veuillez vous reconnecter.');
+        } else if (message != null) {
+          throw Exception(message);
+        }
+      }
+      throw Exception('Impossible de charger les défis. Vérifiez votre connexion.');
     }
   }
 

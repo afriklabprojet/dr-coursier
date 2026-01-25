@@ -15,21 +15,56 @@ class ChallengesScreen extends ConsumerWidget {
       body: challengesAsync.when(
         data: (data) => _ChallengesContent(data: data, ref: ref),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Erreur: $err'),
-              const SizedBox(height: 16),
-              FilledButton.tonal(
-                onPressed: () => ref.invalidate(challengesProvider),
-                child: const Text('Réessayer'),
+        error: (err, _) {
+          // Extraire le message d'erreur lisible
+          String errorMessage = err.toString();
+          if (errorMessage.startsWith('Exception: ')) {
+            errorMessage = errorMessage.replaceFirst('Exception: ', '');
+          }
+          
+          // Déterminer l'icône selon le type d'erreur
+          final bool isProfileError = errorMessage.contains('coursier non trouvé') || 
+                                      errorMessage.contains('compte livreur');
+          
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isProfileError ? Icons.person_off : Icons.error_outline, 
+                    size: 64, 
+                    color: isProfileError ? Colors.orange : Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isProfileError ? 'Compte non autorisé' : 'Erreur',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    errorMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => ref.invalidate(challengesProvider),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer'),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

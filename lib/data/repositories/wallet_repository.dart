@@ -19,7 +19,19 @@ class WalletRepository {
       final response = await _dio.get(ApiConstants.wallet);
       return WalletData.fromJson(response.data['data']);
     } catch (e) {
-      throw Exception('Failed to fetch wallet data: $e');
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final message = e.response?.data['message'];
+        
+        if (statusCode == 403) {
+          throw Exception(message ?? 'Profil coursier non trouvé. Veuillez vous connecter avec un compte livreur.');
+        } else if (statusCode == 401) {
+          throw Exception('Session expirée. Veuillez vous reconnecter.');
+        } else if (message != null) {
+          throw Exception(message);
+        }
+      }
+      throw Exception('Impossible de charger les données du portefeuille.');
     }
   }
 
@@ -29,7 +41,10 @@ class WalletRepository {
       final response = await _dio.get(ApiConstants.walletCanDeliver);
       return response.data['data'];
     } catch (e) {
-      throw Exception('Failed to check delivery eligibility: $e');
+      if (e is DioException && e.response?.statusCode == 403) {
+        throw Exception(e.response?.data['message'] ?? 'Profil coursier non trouvé.');
+      }
+      throw Exception('Impossible de vérifier l\'éligibilité aux livraisons.');
     }
   }
 
