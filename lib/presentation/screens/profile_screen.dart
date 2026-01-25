@@ -411,6 +411,24 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// --- Helper pour le type de véhicule ---
+String _getVehicleLabel(String? vehicleType) {
+  switch (vehicleType?.toLowerCase()) {
+    case 'motorcycle':
+      return 'Moto';
+    case 'bicycle':
+      return 'Vélo';
+    case 'car':
+      return 'Voiture';
+    case 'scooter':
+      return 'Scooter';
+    case null:
+      return 'Non défini';
+    default:
+      return vehicleType!;
+  }
+}
+
 // --- 3. Informations Section ---
 
 class _InfoSection extends StatelessWidget {
@@ -451,7 +469,9 @@ class _InfoSection extends StatelessWidget {
           _InfoTile(
             icon: Icons.directions_bike_outlined,
             title: 'Véhicule',
-            value: '${user.courier?.vehicleType ?? "Inconnu"} (${user.courier?.vehicleNumber ?? "---"})',
+            value: user.courier != null 
+                ? '${_getVehicleLabel(user.courier?.vehicleType)} (${user.courier?.vehicleNumber ?? "---"})'
+                : '⚠️ Profil coursier non configuré',
             isLast: true,
           ),
         ],
