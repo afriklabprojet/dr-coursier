@@ -231,17 +231,17 @@ class NotificationService {
           try {
              // Attempting without key might fail or work depending on config, but usually fails.
              // We just log that web push needs setup.
-             print('Web Push requires VAPID key. Skipping token retrieval for now to prevent crash.');
+             debugPrint('Web Push requires VAPID key. Skipping token retrieval for now to prevent crash.');
              return; 
           } catch (e) {
-             print('Error getting web token: $e');
+             debugPrint('Error getting web token: $e');
           }
         } else {
           fcmToken = await _firebaseMessaging.getToken();
         }
 
         if (kDebugMode) {
-          print('FCM Token: $fcmToken');
+          debugPrint('FCM Token: $fcmToken');
         }
 
         // Send token to backend

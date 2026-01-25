@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
@@ -74,7 +75,7 @@ void callbackDispatcher() {
       }
       return false;
     } catch (e) {
-      print('Background task error: $e');
+      debugPrint('Background task error: $e');
       return false;
     }
   });
@@ -131,24 +132,22 @@ Future<void> _updateLocationInBackground() async {
     await prefs.setString('last_location_time', DateTime.now().toIso8601String());
     
   } catch (e) {
-    print('Background location update failed: $e');
+    debugPrint('Background location update failed: $e');
   }
 }
 
 /// Service pour la gestion intelligente de la localisation en temps réel
 class SmartLocationService {
-  static LocationSettings? _currentSettings;
-  static bool _isTracking = false;
   
   /// Démarrer le tracking avec le mode approprié
   static Future<void> startTracking(TrackingMode mode) async {
-    _isTracking = true;
-    _currentSettings = _getSettingsForMode(mode);
+    // Settings are applied when getting location stream
+    _getSettingsForMode(mode);
   }
   
   /// Arrêter le tracking
   static void stopTracking() {
-    _isTracking = false;
+    // Cleanup if needed
   }
   
   /// Obtenir les paramètres de localisation selon le mode

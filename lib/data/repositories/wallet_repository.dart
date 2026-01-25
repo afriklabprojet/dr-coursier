@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
@@ -16,14 +17,23 @@ class WalletRepository {
   /// Récupérer les données du wallet (solde, transactions, stats)
   Future<WalletData> getWalletData() async {
     try {
+      debugPrint('📱 [WALLET] Fetching wallet data from: ${ApiConstants.wallet}');
       final response = await _dio.get(ApiConstants.wallet);
+      debugPrint('✅ [WALLET] Data received successfully');
       return WalletData.fromJson(response.data['data']);
     } catch (e) {
+      debugPrint('❌ [WALLET] Error: $e');
       if (e is DioException) {
         final statusCode = e.response?.statusCode;
-        final message = e.response?.data['message'];
+        final message = e.response?.data?['message'];
         
-        if (statusCode == 403) {
+        debugPrint('   Status code: $statusCode');
+        debugPrint('   Message: $message');
+        debugPrint('   URL: ${e.requestOptions.baseUrl}${e.requestOptions.path}');
+        
+        if (statusCode == 404) {
+          throw Exception('Endpoint wallet non trouvé. Vérifiez la configuration du serveur.');
+        } else if (statusCode == 403) {
           throw Exception(message ?? 'Profil coursier non trouvé. Veuillez vous connecter avec un compte livreur.');
         } else if (statusCode == 401) {
           throw Exception('Session expirée. Veuillez vous reconnecter.');
@@ -31,7 +41,7 @@ class WalletRepository {
           throw Exception(message);
         }
       }
-      throw Exception('Impossible de charger les données du portefeuille.');
+      throw Exception('Failed to fetch wallet data: $e');
     }
   }
 
