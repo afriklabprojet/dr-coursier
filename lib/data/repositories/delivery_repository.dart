@@ -67,7 +67,21 @@ class DeliveryRepository {
       );
       return response.data['data']['status'] == 'available';
     } catch (e) {
-      throw Exception('Failed to toggle availability: $e');
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final message = e.response?.data?['message'];
+        final errorCode = e.response?.data?['error_code'];
+        
+        if (statusCode == 403) {
+          if (errorCode == 'COURIER_PROFILE_NOT_FOUND') {
+            throw Exception('Votre compte n\'est pas configuré comme coursier. Veuillez vous déconnecter et utiliser un compte coursier.');
+          }
+          throw Exception(message ?? 'Accès refusé. Veuillez vous reconnecter.');
+        } else if (statusCode == 401) {
+          throw Exception('Session expirée. Veuillez vous reconnecter.');
+        }
+      }
+      throw Exception('Impossible de changer le statut. Vérifiez votre connexion.');
     }
   }
 
@@ -87,7 +101,21 @@ class DeliveryRepository {
       final response = await _dio.get(ApiConstants.profile);
       return CourierProfile.fromJson(response.data['data']);
     } catch (e) {
-      throw Exception('Failed to fetch profile: $e');
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final message = e.response?.data?['message'];
+        final errorCode = e.response?.data?['error_code'];
+        
+        if (statusCode == 403) {
+          if (errorCode == 'COURIER_PROFILE_NOT_FOUND') {
+            throw Exception('Profil coursier non trouvé. Ce compte n\'est pas un compte livreur.');
+          }
+          throw Exception(message ?? 'Accès refusé.');
+        } else if (statusCode == 401) {
+          throw Exception('Session expirée. Veuillez vous reconnecter.');
+        }
+      }
+      throw Exception('Impossible de charger le profil.');
     }
   }
 

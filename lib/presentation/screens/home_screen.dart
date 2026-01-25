@@ -72,8 +72,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Revert on error
       setState(() => _isOnline = !value);
       if (mounted) {
+        // Extraire le message d'erreur propre
+        String errorMessage = e.toString();
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
