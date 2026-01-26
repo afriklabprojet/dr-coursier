@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/theme_provider.dart';
 import 'home_screen.dart';
 import 'deliveries_screen.dart';
 import 'wallet_screen.dart';
@@ -24,6 +25,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Écouter les changements de thème pour forcer le rebuild
+    ref.watch(themeProvider);
+    final isDark = context.isDark;
+    
     final screens = [
       const HomeScreen(),
       const DeliveriesScreen(),
@@ -41,8 +46,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         currentIndex: _currentIndex,
         onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         selectedItemColor: const Color(0xFF1E88E5),
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: isDark ? Colors.grey.shade400 : Colors.grey,
         showUnselectedLabels: true,
         items: const [
           BottomNavigationBarItem(

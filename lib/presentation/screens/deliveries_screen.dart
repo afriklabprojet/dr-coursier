@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/theme_provider.dart';
 import 'delivery_details_screen.dart';
 import 'batch_deliveries_screen.dart';
 import '../providers/delivery_providers.dart';
@@ -38,12 +39,16 @@ class _DeliveriesScreenState extends ConsumerState<DeliveriesScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Écouter les changements de thème
+    ref.watch(themeProvider);
+    final isDark = context.isDark;
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text('Mes Courses', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        title: Text('Mes Courses', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
         centerTitle: false,
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         elevation: 0,
         actions: [
           // Batch mode button
@@ -70,13 +75,13 @@ class _DeliveriesScreenState extends ConsumerState<DeliveriesScreen>
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  labelColor: Colors.black,
-                  unselectedLabelColor: Colors.grey.shade600,
+                  labelColor: isDark ? Colors.white : Colors.black,
+                  unselectedLabelColor: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                   indicator: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),

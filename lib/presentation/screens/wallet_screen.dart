@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/theme/theme_provider.dart';
 import '../../data/models/wallet_data.dart';
 import '../../data/repositories/wallet_repository.dart';
 import '../../data/repositories/jeko_payment_repository.dart';
@@ -60,14 +61,17 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     final walletAsync = ref.watch(walletDataProvider);
+    // Écouter les changements de thème
+    ref.watch(themeProvider);
+    final isDark = context.isDark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F4F8),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF2F4F8),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        title: const Text('Mon Portefeuille', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.black),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text('Mon Portefeuille', style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

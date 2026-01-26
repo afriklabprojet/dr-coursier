@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/theme/theme_provider.dart';
 import '../../data/repositories/challenge_repository.dart';
 
 class ChallengesScreen extends ConsumerWidget {
@@ -9,9 +10,12 @@ class ChallengesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final challengesAsync = ref.watch(challengesProvider);
+    // Écouter les changements de thème
+    ref.watch(themeProvider);
+    final isDark = context.isDark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FD),
       body: challengesAsync.when(
         data: (data) => _ChallengesContent(data: data, ref: ref),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -40,9 +44,10 @@ class ChallengesScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     isProfileError ? 'Compte non autorisé' : 'Erreur',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -51,7 +56,7 @@ class ChallengesScreen extends ConsumerWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                     ),
                   ),
                   const SizedBox(height: 24),

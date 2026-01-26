@@ -186,3 +186,40 @@ ThemeData get darkTheme => ThemeData(
     }),
   ),
 );
+
+/// Extension pour accéder facilement aux couleurs du thème
+extension ThemeExtension on BuildContext {
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+  
+  Color get scaffoldBackground => isDark 
+      ? const Color(0xFF121212) 
+      : const Color(0xFFF8F9FD);
+  
+  Color get cardBackground => isDark 
+      ? const Color(0xFF1E1E1E) 
+      : Colors.white;
+  
+  Color get surfaceColor => isDark 
+      ? const Color(0xFF2C2C2C) 
+      : Colors.grey.shade100;
+  
+  Color get primaryText => isDark 
+      ? Colors.white 
+      : Colors.black;
+  
+  Color get secondaryText => isDark 
+      ? Colors.white70 
+      : Colors.grey.shade600;
+  
+  Color get tertiaryText => isDark 
+      ? Colors.white54 
+      : Colors.grey.shade500;
+  
+  Color get dividerColor => isDark 
+      ? const Color(0xFF2C2C2C) 
+      : Colors.grey.shade200;
+  
+  Color get iconColor => isDark 
+      ? Colors.white70 
+      : Colors.grey.shade700;
+}

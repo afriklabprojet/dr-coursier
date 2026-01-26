@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/theme/theme_provider.dart';
 import '../providers/profile_provider.dart';
 import '../../data/models/user.dart';
 import '../../data/models/wallet_data.dart';
@@ -30,9 +31,12 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(profileProvider);
+    // Écouter les changements de thème
+    ref.watch(themeProvider);
+    final isDark = context.isDark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD), // Fond gris très clair premium
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FD),
       body: userAsync.when(
         data: (user) => _ProfileView(user: user),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -376,13 +380,14 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.05),
+            color: (isDark ? Colors.black : Colors.grey).withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -394,7 +399,7 @@ class _StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: bgColor,
+              color: isDark ? bgColor.withValues(alpha: 0.2) : bgColor,
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 24),
@@ -402,17 +407,17 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade500,
+              color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -449,13 +454,14 @@ class _InfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.05),
+            color: (isDark ? Colors.black : Colors.grey).withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -510,6 +516,7 @@ class _InfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
     return InkWell(
       onTap: () {},
       borderRadius: BorderRadius.vertical(
@@ -523,7 +530,7 @@ class _InfoTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: isDark ? Colors.grey.shade800 : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: Colors.blue.shade800, size: 20),
@@ -537,17 +544,17 @@ class _InfoTile extends StatelessWidget {
                     title.toUpperCase(),
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey.shade500,
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
                 ],
@@ -744,12 +751,13 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
     return ActionChip(
       avatar: Icon(icon, size: 18, color: Colors.blue.shade800),
       label: Text(label),
-      backgroundColor: Colors.white,
-      side: BorderSide(color: Colors.grey.shade200),
-      labelStyle: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.w600),
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      side: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade200),
+      labelStyle: TextStyle(color: isDark ? Colors.blue.shade300 : Colors.blue.shade900, fontWeight: FontWeight.w600),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       onPressed: onTap,
@@ -764,12 +772,13 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
+        color: isDark ? Colors.white : Colors.black87,
       ),
     );
   }
@@ -778,7 +787,8 @@ class _SectionTitle extends StatelessWidget {
 class _Separator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Divider(height: 1, thickness: 1, color: Colors.grey.shade100, indent: 60);
+    final isDark = context.isDark;
+    return Divider(height: 1, thickness: 1, color: isDark ? Colors.grey.shade800 : Colors.grey.shade100, indent: 60);
   }
 }
 
