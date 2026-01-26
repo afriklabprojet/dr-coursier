@@ -41,7 +41,19 @@ class DeliveryRepository {
     try {
       await _dio.post(ApiConstants.pickupDelivery(id));
     } catch (e) {
-      throw Exception('Failed to pickup delivery: $e');
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final message = e.response?.data?['message'];
+        
+        if (statusCode == 400) {
+          throw Exception(message ?? 'Cette livraison ne peut pas être récupérée actuellement.');
+        } else if (statusCode == 403) {
+          throw Exception(message ?? 'Vous n\'êtes pas autorisé à récupérer cette livraison.');
+        } else if (statusCode == 404) {
+          throw Exception('Livraison introuvable.');
+        }
+      }
+      throw Exception('Impossible de confirmer la récupération. Vérifiez votre connexion.');
     }
   }
 
