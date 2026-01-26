@@ -12,6 +12,7 @@ import 'login_screen.dart';
 import 'deliveries_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
+import 'help_center_screen.dart';
 
 // --- Providers ---
 
@@ -891,8 +892,9 @@ class _ActionsSection extends StatelessWidget {
           icon: Icons.help_outline, 
           label: 'Aide & Support',
           onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Bientôt disponible")),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HelpCenterScreen()),
             );
           },
         ),
