@@ -13,7 +13,8 @@ class ThemeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
     _loadTheme();
-    return ThemeMode.system;
+    // Par défaut, utiliser le thème clair
+    return ThemeMode.light;
   }
 
   Future<void> _loadTheme() async {
@@ -23,7 +24,7 @@ class ThemeNotifier extends Notifier<ThemeMode> {
     if (themeString != null) {
       state = ThemeMode.values.firstWhere(
         (e) => e.name == themeString,
-        orElse: () => ThemeMode.system,
+        orElse: () => ThemeMode.light,
       );
     }
   }
