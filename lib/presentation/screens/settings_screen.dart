@@ -8,6 +8,7 @@ import '../../core/services/background_location_service.dart';
 import 'change_password_screen.dart';
 import 'help_center_screen.dart';
 import 'report_problem_screen.dart';
+import 'support_tickets_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -188,6 +189,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
           _buildSectionHeader('Aide & Support'),
            _buildCard([
+            _buildActionTile(
+              icon: Icons.support_agent,
+              title: 'Mes demandes de support',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SupportTicketsScreen()),
+              ),
+            ),
+            const Divider(height: 1),
             _buildActionTile(
               icon: Icons.headset_mic_outlined,
               title: 'Contacter le support',
