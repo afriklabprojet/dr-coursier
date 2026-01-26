@@ -253,6 +253,50 @@ class AuthRepository {
     }
   }
 
+  /// Mettre à jour le profil utilisateur (nom, téléphone, etc.)
+  Future<User> updateProfile({
+    String? name,
+    String? phone,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (name != null && name.isNotEmpty) data['name'] = name;
+      if (phone != null && phone.isNotEmpty) data['phone'] = phone;
+      
+      if (data.isEmpty) {
+        throw Exception('Aucune donnée à mettre à jour');
+      }
+      
+      final response = await _dio.post(
+        '${ApiConstants.baseUrl}/auth/me/update',
+        data: data,
+      );
+      
+      // Handle wrapped response structure
+      final responseData = response.data;
+      final userData = responseData['data'] ?? responseData;
+      
+      return User.fromJson(userData);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 422) {
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('message')) {
+          throw Exception(data['message']);
+        }
+        if (data is Map && data.containsKey('errors')) {
+          final errors = data['errors'] as Map;
+          final firstError = errors.values.first;
+          if (firstError is List && firstError.isNotEmpty) {
+            throw Exception(firstError.first);
+          }
+        }
+      }
+      throw Exception('Erreur lors de la mise à jour: ${e.message}');
+    } catch (e) {
+      throw Exception('Erreur: $e');
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _dio.post(ApiConstants.logout);

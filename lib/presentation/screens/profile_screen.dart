@@ -447,13 +447,13 @@ String _getVehicleLabel(String? vehicleType) {
 
 // --- 3. Informations Section ---
 
-class _InfoSection extends StatelessWidget {
+class _InfoSection extends ConsumerWidget {
   final User user;
 
   const _InfoSection({required this.user});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = context.isDark;
     return Container(
       decoration: BoxDecoration(
@@ -481,6 +481,7 @@ class _InfoSection extends StatelessWidget {
             title: 'Téléphone',
             value: user.phone ?? 'Non renseigné',
             action: Icon(Icons.edit, size: 16, color: Colors.grey.shade400),
+            onTap: () => _showEditPhoneDialog(context, ref, user.phone),
           ),
           _Separator(),
           _InfoTile(
@@ -495,6 +496,166 @@ class _InfoSection extends StatelessWidget {
       ),
     );
   }
+
+  void _showEditPhoneDialog(BuildContext context, WidgetRef ref, String? currentPhone) {
+    final isDark = context.isDark;
+    final controller = TextEditingController(text: currentPhone ?? '');
+    final formKey = GlobalKey<FormState>();
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.phone_android, color: Colors.blue.shade700),
+            const SizedBox(width: 12),
+            Text(
+              'Modifier le téléphone',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Entrez votre nouveau numéro de téléphone',
+                style: TextStyle(
+                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  labelText: 'Numéro de téléphone',
+                  hintText: '+225 07 XX XX XX XX',
+                  prefixIcon: Icon(Icons.phone, color: Colors.blue.shade700),
+                  filled: true,
+                  fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Veuillez entrer un numéro';
+                  }
+                  // Validation basique du format téléphone
+                  final phone = value.replaceAll(RegExp(r'[\s\-\.]'), '');
+                  if (phone.length < 8) {
+                    return 'Numéro trop court';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              'Annuler',
+              style: TextStyle(color: isDark ? Colors.grey.shade400 : Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogContext);
+                await _updatePhone(context, ref, controller.text.trim());
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updatePhone(BuildContext context, WidgetRef ref, String newPhone) async {
+    // Afficher un indicateur de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.updateProfile(phone: newPhone);
+      
+      // Fermer le loader
+      if (context.mounted) Navigator.pop(context);
+      
+      // Rafraîchir le profil
+      ref.invalidate(profileProvider);
+      
+      // Message de succès
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Numéro de téléphone mis à jour'),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      // Fermer le loader
+      if (context.mounted) Navigator.pop(context);
+      
+      // Message d'erreur
+      if (context.mounted) {
+        String errorMsg = e.toString();
+        if (errorMsg.startsWith('Exception: ')) {
+          errorMsg = errorMsg.substring(11);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text(errorMsg)),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _InfoTile extends StatelessWidget {
@@ -502,6 +663,7 @@ class _InfoTile extends StatelessWidget {
   final String title;
   final String value;
   final Widget? action;
+  final VoidCallback? onTap;
   final bool isFirst;
   final bool isLast;
 
@@ -510,6 +672,7 @@ class _InfoTile extends StatelessWidget {
     required this.title,
     required this.value,
     this.action,
+    this.onTap,
     this.isFirst = false,
     this.isLast = false,
   });
@@ -518,7 +681,7 @@ class _InfoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = context.isDark;
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       borderRadius: BorderRadius.vertical(
         top: isFirst ? const Radius.circular(20) : Radius.zero,
         bottom: isLast ? const Radius.circular(20) : Radius.zero,
