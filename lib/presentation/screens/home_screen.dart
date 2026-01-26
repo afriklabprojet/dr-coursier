@@ -5,13 +5,25 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
+import 'package:intl/intl.dart';
 import '../../data/models/courier_profile.dart';
 import '../../data/models/route_info.dart';
+import '../../data/models/wallet_data.dart';
+import '../../data/repositories/wallet_repository.dart';
 import '../providers/delivery_providers.dart';
 import '../../data/repositories/delivery_repository.dart';
 import '../../core/services/location_service.dart';
 import 'chat_screen.dart';
 import 'multi_route_screen.dart';
+
+// Provider pour le solde du wallet sur l'écran d'accueil (même source que le profil)
+final homeWalletProvider = FutureProvider.autoDispose<WalletData?>((ref) async {
+  try {
+    return await ref.read(walletRepositoryProvider).getWalletData();
+  } catch (e) {
+    return null;
+  }
+});
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -277,7 +289,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Earnings Pill
+                        // Wallet Balance Pill - Using same source as profile screen
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -289,40 +301,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             children: [
                               Icon(Icons.monetization_on, size: 18, color: Colors.green.shade700),
                               const SizedBox(width: 6),
-                              // Real earnings from profile
-                              profileAsync.when(
-                                data: (profile) {
-                                  // Format: 12500 -> 12.500
-                                  final earningsFormatted = profile.earnings
-                                      .toStringAsFixed(0)
-                                      .replaceAllMapped(
-                                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), 
-                                          (Match m) => '${m[1]}.');
-                                  
-                                  return Text(
-                                    '$earningsFormatted FCFA', 
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade800,
+                              // Use wallet balance (same as profile screen) for consistency
+                              Consumer(
+                                builder: (context, ref, _) {
+                                  final walletAsync = ref.watch(homeWalletProvider);
+                                  return walletAsync.when(
+                                    data: (walletData) {
+                                      final balance = walletData?.balance ?? 0;
+                                      final balanceFormatted = NumberFormat("#,##0", "fr_FR").format(balance);
+                                      return Text(
+                                        '$balanceFormatted FCFA', 
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade800,
+                                        ),
+                                      );
+                                    },
+                                    loading: () => SizedBox(
+                                      width: 60,
+                                      child: LinearProgressIndicator(
+                                        minHeight: 8,
+                                        color: Colors.green.shade300,
+                                        backgroundColor: Colors.green.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    error: (error, stack) => Text(
+                                      '--- FCFA', 
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade800,
+                                      ),
                                     ),
                                   );
                                 },
-                                loading: () => SizedBox(
-                                  width: 60,
-                                  child: LinearProgressIndicator(
-                                    minHeight: 8,
-                                    color: Colors.green.shade300,
-                                    backgroundColor: Colors.green.shade100,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                error: (error, stack) => Text(
-                                  '--- FCFA', 
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade800,
-                                  ),
-                                ),
                               ),
                             ],
                           ),
