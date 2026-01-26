@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -912,12 +913,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     if (phoneToCall != null && phoneToCall.isNotEmpty)
                     IconButton(
-                      onPressed: () async {
-                         final Uri url = Uri.parse('tel:$phoneToCall');
-                         if (await canLaunchUrl(url)) {
-                           await launchUrl(url);
-                         }
-                      },
+                      onPressed: () => _makePhoneCall(context, phoneToCall!),
                       icon: const Icon(Icons.phone, color: Colors.green),
                       tooltip: 'Appeler',
                     ),
@@ -1183,6 +1179,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       50, // padding
     ));
+  }
+
+  /// Effectue un appel téléphonique avec gestion d'erreur
+  Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
+    // Nettoyer le numéro de téléphone (enlever espaces, tirets, etc.)
+    final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    
+    if (cleanNumber.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Numéro de téléphone invalide'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    final Uri telUri = Uri(scheme: 'tel', path: cleanNumber);
+    
+    try {
+      // Essayer d'abord avec canLaunchUrl
+      final canLaunch = await canLaunchUrl(telUri);
+      
+      if (canLaunch) {
+        final launched = await launchUrl(
+          telUri, 
+          mode: LaunchMode.externalApplication,
+        );
+        
+        if (!launched && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Impossible d\'appeler $phoneNumber'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // Tenter quand même le lancement (certains appareils retournent false mais fonctionnent)
+        await launchUrl(
+          telUri, 
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de l\'appel: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: impossible d\'appeler $phoneNumber'),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Copier',
+              textColor: Colors.white,
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: phoneNumber));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Numéro copié dans le presse-papier'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _showChatOptions(BuildContext context, dynamic delivery) {
