@@ -100,6 +100,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _login() async {
+    // Prevent double-tap / multiple submissions
+    if (_isLoading) return;
+    
     if (!_formKey.currentState!.validate()) return;
     
     setState(() => _isLoading = true);
