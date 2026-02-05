@@ -210,9 +210,10 @@ class JekoPaymentService {
       try {
         final canLaunch = await canLaunchUrl(uri);
         if (canLaunch) {
+          // Toujours afficher dans l'app pour voir le QR code
           await launchUrl(
             uri, 
-            mode: isSandbox ? LaunchMode.inAppWebView : LaunchMode.externalApplication,
+            mode: LaunchMode.inAppWebView,
           );
         } else {
           // Fallback: essayer avec inAppWebView
